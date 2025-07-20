@@ -17,6 +17,19 @@ const initialMessages = [
   },
 ];
 
+const modePrompts = {
+  "Explain Code":
+    "You are a senior software engineer. Explain the code step-by-step in simple terms. Be concise and clear.",
+  "Find Bugs":
+    "You're an expert code reviewer. Carefully analyze the code and highlight any bugs or potential issues with line references.",
+  Optimize:
+    "You are a performance optimization specialist. Suggest improvements to make the code more efficient or readable.",
+  "Check Style":
+    "You are a code style guide enforcer. Review the code against common style conventions and suggest formatting fixes.",
+  "Security Review":
+    "You're a security expert. Identify any potential security flaws or vulnerabilities in this code, and suggest fixes.",
+};
+
 export default function ChatPage() {
   const [messages, setMessages] = useState(initialMessages);
   const [chatTitle, setChatTitle] = useState("New Chat");
@@ -64,7 +77,7 @@ export default function ChatPage() {
     save();
   }, [messages, user]);
 
-  const handleSend = async (msg: string) => {
+  const handleSend = async (msg: string, mode: string) => {
     if (!msg.trim()) return;
     const userMsg = {
       id: messages.length + 1,
@@ -72,8 +85,15 @@ export default function ChatPage() {
       sender: "user",
       content: msg,
     };
-    const newMessages = [...messages, userMsg];
-    setMessages(newMessages);
+    // Prepend the selected mode's system prompt
+    const systemPrompt = {
+      role: "system",
+      content:
+        modePrompts[mode as keyof typeof modePrompts] ||
+        modePrompts["Explain Code"],
+    };
+    const newMessages = [systemPrompt, ...messages.slice(1), userMsg];
+    setMessages([...messages, userMsg]);
     setLoading(true);
     try {
       const res = await fetch("/api/chat", {
@@ -89,7 +109,7 @@ export default function ChatPage() {
         if (!reader) throw new Error("No stream reader");
         let partial = "";
         let done = false;
-        let assistantMsgId = newMessages.length + 1;
+        let assistantMsgId = messages.length + 2;
         setMessages((prev) => [
           ...prev,
           {

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import Chat from '@/models/Chat';
 import connectDB from '@/lib/mongodb';
 
-const systemPrompt = {
+const defaultSystemPrompt = {
   role: "system",
   content: `
 You are CodeMuse, an expert AI code review assistant. When reviewing code, respond in exactly four clear parts with roughly equal length, using simple language:
@@ -24,7 +24,15 @@ export async function POST(req: Request) {
     if (!apiKey) {
       return NextResponse.json({ error: "GROQ_API_KEY not set" }, { status: 500 });
     }
-    const fullMessages = [systemPrompt, ...messages];
+    // Use the first message as the system prompt if present
+    let systemPrompt = defaultSystemPrompt;
+    let restMessages = messages;
+    if (messages && messages[0]?.role === "system") {
+      systemPrompt = messages[0];
+      restMessages = messages.slice(1);
+    }
+    const fullMessages = [systemPrompt, ...restMessages];
+    console.log("[GROQ] System prompt:", systemPrompt.content);
     // Try streaming response
     const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
